@@ -4,6 +4,8 @@ import com.booleanuk.simpleapi.responses.ErrorResponse;
 import com.booleanuk.simpleapi.responses.PostListResponse;
 import com.booleanuk.simpleapi.responses.PostResponse;
 import com.booleanuk.simpleapi.responses.Response;
+import com.booleanuk.simpleapi.users.User;
+import com.booleanuk.simpleapi.users.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,9 @@ public class PostController {
     @Autowired
     private PostRepository postRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     private ErrorResponse errorResponse = new ErrorResponse();
     private PostResponse postResponse = new PostResponse();
     private PostListResponse postListResponse = new PostListResponse();
@@ -27,14 +32,20 @@ public class PostController {
         return ResponseEntity.ok(postListResponse);
     }
 
-    @PostMapping
-    public ResponseEntity<Response<?>> createNewPost(@RequestBody Post post) { //path variable user id?
+    @PostMapping("{userId}")
+    public ResponseEntity<Response<?>> createNewPost(@PathVariable int userId, @RequestBody Post post) { //path variable user id?
+        User user = this.userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            this.errorResponse.set("No user with that id found");
+            return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+        }
         post.setCreatedAt(LocalDateTime.now());
         post.setUpdatedAt(LocalDateTime.now());
         if (post.getTitle() == null || post.getBeer() == null || post.getReview() == null) {
             this.errorResponse.set("Could not create a new post, please check all fields are correct");
             return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
         }
+        post.setUser(user);
         this.postResponse.set(this.postRepository.save(post));
         return new ResponseEntity<>(postResponse, HttpStatus.CREATED);
     }

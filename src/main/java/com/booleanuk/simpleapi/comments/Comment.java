@@ -1,6 +1,7 @@
 package com.booleanuk.simpleapi.comments;
 
 import com.booleanuk.simpleapi.posts.Post;
+import com.booleanuk.simpleapi.users.User;
 import com.fasterxml.jackson.annotation.JsonIncludeProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -33,6 +34,11 @@ public class Comment {
     @JoinColumn(name = "post_id")
     @JsonIncludeProperties({"id", "title"})
     private Post post;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    @JsonIncludeProperties({"username"})
+    private User commenter;
 
     public Comment(String content) {
         this.content = content;

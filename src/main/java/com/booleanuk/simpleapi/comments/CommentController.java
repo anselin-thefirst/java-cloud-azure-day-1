@@ -3,6 +3,8 @@ package com.booleanuk.simpleapi.comments;
 import com.booleanuk.simpleapi.posts.Post;
 import com.booleanuk.simpleapi.posts.PostRepository;
 import com.booleanuk.simpleapi.responses.*;
+import com.booleanuk.simpleapi.users.User;
+import com.booleanuk.simpleapi.users.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,12 +13,16 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 
 @RestController
-@RequestMapping("{post_id}/comments")
+@RequestMapping("{postId}/comments")
 public class CommentController {
     @Autowired
     private PostRepository postRepository;
 
-    @Autowired CommentRepository commentRepository;
+    @Autowired
+    private CommentRepository commentRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     private ErrorResponse errorResponse = new ErrorResponse();
     private CommentResponse commentResponse = new CommentResponse();
@@ -25,15 +31,24 @@ public class CommentController {
     @GetMapping()
     public ResponseEntity<Response<?>> getAllPostComments(@PathVariable int postId) {
         Post post = this.postRepository.findById(postId).orElse(null);
+        if (post == null) {
+            this.errorResponse.set("No post with that id found");
+            return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+        }
         this.commentListResponse.set(this.commentRepository.findByPost(post));
         return ResponseEntity.ok(commentListResponse);
     }
 
-    @PostMapping
-    public ResponseEntity<Response<?>> createNewComment(@PathVariable int postId, @RequestBody Comment comment) {
+    @PostMapping("{commenterId}")
+    public ResponseEntity<Response<?>> createNewComment(@PathVariable int postId, @PathVariable int commenterId, @RequestBody Comment comment) {
         Post post = this.postRepository.findById(postId).orElse(null);
         if (post == null) {
             this.errorResponse.set("No post with that id found");
+            return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+        }
+        User commenter = this.userRepository.findById(commenterId).orElse(null);
+        if (commenter == null) {
+            this.errorResponse.set("No user with that id found");
             return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
         }
         comment.setCreatedAt(LocalDateTime.now());
@@ -43,11 +58,12 @@ public class CommentController {
             return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
         }
         comment.setPost(post);
+        comment.setCommenter(commenter);
         this.commentResponse.set(this.commentRepository.save(comment));
         return new ResponseEntity<>(commentResponse, HttpStatus.CREATED);
     }
 
-    @PutMapping("{comment_id}")
+    @PutMapping("{commentId}")
     public ResponseEntity<Response<?>> updateComment(@PathVariable int commentId, @RequestBody Comment comment) { // post id?
         Comment commentToUpdate = this.commentRepository.findById(commentId).orElse(null);
         if (commentToUpdate == null) {
@@ -65,7 +81,7 @@ public class CommentController {
         return new ResponseEntity<>(commentResponse, HttpStatus.CREATED);
     }
 
-    @DeleteMapping("{comment_id}")
+    @DeleteMapping("{commentId}")
     public ResponseEntity<Response<?>> deleteComment(@PathVariable int commentId) {
         Comment commentToDelete = this.commentRepository.findById(commentId).orElse(null);
         if (commentToDelete == null) {
